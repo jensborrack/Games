@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Davids Weg</title>
+<style>
+html,body{margin:0;height:100%;background:#1c2a1a;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none}
+canvas{display:block}
+</style>
+</head>
+<body>
+<canvas id="c" width="960" height="540"></canvas>
+<script>
+// Davids Weg – Prototyp (Menü + Level 4). Keine externen Dateien, läuft komplett offline.
+const C=document.getElementById('c'),X=C.getContext('2d'),W=960,H=540,G=440;
+const SX=165,SY=372,GX=800,HY=225,GRAV=900;
+function fit(){const s=Math.min(innerWidth/W,innerHeight/H);C.style.width=W*s+'px';C.style.height=H*s+'px';C.style.position='absolute';C.style.left=(innerWidth-W*s)/2+'px';C.style.top=(innerHeight-H*s)/2+'px'}
+addEventListener('resize',fit);fit();
+
+let S='menu',btns=[],t=0,stones=5,stars=0,prayed=false,drag=null,stone=null,shot=false,
+    msg='',msgT=0,fall=0,wt=0,qi=0,qres=null,lv=1,hp=3,carry=5;
+const VERSE='„Der HERR hilft nicht durch Schwert oder Spieß; denn der Streit ist des HERRN.“ (1. Samuel 17,47)';
+const TAUNTS=['Wer wagt es, gegen mich zu kämpfen?','Komm her, du Hirtenjunge!','Ich fürchte mich vor keinem!','Ist das alles, was Israel hat?'];
+const QZ=[0,
+ [['Wer ist wie ein guter Hirte für uns?',['Gott','Der Wolf','Der Riese'],0],['Was tut ein guter Hirte für seine Schafe?',['Er läuft weg','Er passt auf sie auf','Er ärgert sie'],1]],
+ [['Wem spielt David auf der Harfe vor?',['König Saul','Goliat','Seinen Brüdern'],0],['Wozu können wir unsere Gaben nutzen?',['Nur für uns','Um anderen Gutes zu tun','Zum Angeben'],1]],
+ [['Was bringt David seinen Brüdern?',['Proviant','Schwerter','Pferde'],0],['Wie viele glatte Steine sammelt David?',['2','5','10'],1]],
+ [
+ ['Womit besiegt David den Riesen?',['Mit einem Schwert','Mit Schleuder und Stein','Mit einem Speer'],1],
+ ['Wie heißt der Riese?',['Saul','Jonatan','Goliat'],2],
+ ['Worauf vertraut David?',['Auf seine Rüstung','Auf seine Stärke','Auf Gott'],2]
+]];
+
+function startLevel(n){lv=n;hp=3;prayed=false;drag=null;stone=null;shot=false;msgT=0;fall=0;wt=0;qi=0;qres=null;tgt=null;
+ if(n===1){init1();S='l1';say('Halte den Finger aufs Feld: David läuft dorthin. Bring alle Schafe ins Gehege!',6)}
+ if(n===2){init2();S='l2';say('Tippe auf die Spur, wenn eine Note die Linie erreicht (oder Taste A, S, D).',6)}
+ if(n===3){init3();S='l3';say('Tippe zum Springen. Weiche den Felsen aus und sammle 5 Steine!',6)}
+ if(n===4){stones=carry;S='play'}}
+const PS=['','l1','l2','l3','play'];
+const PV=['','Der HERR ist mein Hirte. (Psalm 23,1)  +1 Mut','','Gott ist bei dir – er wird dich erretten. (nach 1. Samuel 17,37)  +1 Mut',VERSE+'  +1 Stein'];
+const DONE=[0,['Alle Schafe sind sicher!','„Der HERR ist mein Hirte, mir wird nichts mangeln.“ (Psalm 23,1)'],['Saul lächelt wieder!','Mit dem, was du kannst, darfst du anderen Gutes tun.'],['Du hast das Lager erreicht!','Gott gebraucht auch die Kleinen.']];
+function fin(){if(lv===3)carry=Math.max(2,got);S='done'}
+function say(m,d){msg=m;msgT=d||3}
+
+// ---------- Zeichenhelfer ----------
+function R(x,y,w,h,r,f){X.beginPath();X.roundRect(x,y,w,h,r);X.fillStyle=f;X.fill()}
+function Ci(x,y,r,f){X.beginPath();X.arc(x,y,r,0,7);X.fillStyle=f;X.fill()}
+function T(s,x,y,sz,col,al){X.font='bold '+sz+'px "Trebuchet MS",Verdana,sans-serif';X.fillStyle=col||'#fff';X.textAlign=al||'center';X.textBaseline='middle';X.fillText(s,x,y)}
+function WR(s,x,y,w,sz,col,lh){X.font='bold '+sz+'px "Trebuchet MS",Verdana,sans-serif';let l='',yy=y;for(const wd of s.split(' ')){const tt=l+wd+' ';if(X.measureText(tt).width>w&&l){T(l,x,yy,sz,col);l=wd+' ';yy+=lh}else l=tt}T(l,x,yy,sz,col)}
+function B(x,y,w,h,label,fn,col){btns.push({x,y,w,h,fn});R(x,y+4,w,h,14,'rgba(0,0,0,.3)');R(x,y,w,h,14,col||'#e8a33d');T(label,x+w/2,y+h/2,Math.min(26,h*.5),'#3a2410')}
+
+// ---------- Szene ----------
+function sky(){const g=X.createLinearGradient(0,0,0,G);g.addColorStop(0,'#7ec8e8');g.addColorStop(1,'#fbe9b7');X.fillStyle=g;X.fillRect(0,0,W,H);
+ Ci(840,90,42,'#ffe27a');
+ X.fillStyle='#c9b27a';X.beginPath();X.moveTo(0,G);X.quadraticCurveTo(220,300,480,G);X.fill();
+ X.fillStyle='#b89a5e';X.beginPath();X.moveTo(380,G);X.quadraticCurveTo(700,330,960,G);X.fill();
+ X.fillStyle='#7aa94f';X.fillRect(0,G,W,H-G);X.fillStyle='#5f8c3c';X.fillRect(0,G,W,8)}
+function soldier(x,j,c){const y=G-j;R(x-9,y-34,18,26,5,c);R(x-8,y-8,6,10,2,'#6b4a2b');R(x+2,y-8,6,10,2,'#6b4a2b');Ci(x,y-44,9,'#f0c8a0');R(x-10,y-54,20,8,4,'#7a5a3a')}
+function david(){R(SX-30,G-30,10,30,3,'#6b4a2b');R(SX-20,G-30,10,30,3,'#6b4a2b');
+ R(SX-32,G-78,32,50,8,'#3f7fbf');Ci(SX-16,G-92,15,'#f0c8a0');X.fillStyle='#5a3a1c';X.beginPath();X.arc(SX-16,G-95,15,3.3,6.1);X.fill();
+ X.strokeStyle='#f0c8a0';X.lineWidth=6;X.lineCap='round';X.beginPath();X.moveTo(SX-6,G-68);X.lineTo(SX,SY);X.stroke()}
+function goliath(){X.save();X.translate(GX,G);X.rotate(fall*Math.PI/2*.97);
+ R(-30,-90,22,90,5,'#5a3a1c');R(8,-90,22,90,5,'#5a3a1c');
+ R(-40,-175,80,95,10,'#8c8c96');R(-40,-175,80,18,6,'#a8a8b4');
+ R(-62,-170,24,60,8,'#8c8c96');R(40,-170,24,60,8,'#8c8c96');
+ X.strokeStyle='#4a3520';X.lineWidth=6;X.beginPath();X.moveTo(54,-110);X.lineTo(54,-270);X.stroke();
+ X.fillStyle='#c0c0c8';X.beginPath();X.moveTo(54,-290);X.lineTo(46,-268);X.lineTo(62,-268);X.fill();
+ Ci(0,-(G-HY),26,'#f0c8a0');
+ X.fillStyle='#8c8c96';X.beginPath();X.arc(0,-(G-HY)-4,28,3.14,6.28);X.fill();
+ Ci(-9,-(G-HY)+2,3,'#222');Ci(9,-(G-HY)+2,3,'#222');
+ if(fall>0.3){T('x',-9,-(G-HY)+2,14,'#222');T('x',9,-(G-HY)+2,14,'#222')}
+ X.restore()}
+function scene(){sky();
+ const cheer=S==='won'&&wt>1.2;
+ for(let i=0;i<3;i++)soldier(40+i*42,cheer?Math.abs(Math.sin(t*7+i))*22:0,['#c0504d','#4d8ec0','#9b59b6'][i]);
+ goliath();david();
+ // Schleuder-Gummi
+ if(drag){const p=pull();const px=SX-p.x*.35,py=SY-p.y*.35;
+  X.strokeStyle='#6b4a2b';X.lineWidth=3;X.beginPath();X.moveTo(SX-8,SY-8);X.lineTo(px,py);X.lineTo(SX+8,SY+8);X.stroke();Ci(px,py,8,'#8d8d8d');
+  // Flugbahn-Vorschau
+  let x=SX,y=SY,vx=p.x*8,vy=p.y*8;for(let i=0;i<40;i++){vy+=GRAV*.04;x+=vx*.04;y+=vy*.04;if(y>G)break;if(i%2)Ci(x,y,3,'rgba(60,40,10,.7)')}}
+ if(stone)Ci(stone.x,stone.y,8,'#8d8d8d');
+ // Steine-Anzeige
+ R(12,12,200,44,12,'rgba(0,0,0,.35)');T('Steine',60,34,20,'#fff');for(let i=0;i<stones;i++)Ci(118+i*18,34,7,'#bdbdbd')}
+
+function pull(){let dx=drag.sx-drag.x,dy=drag.sy-drag.y,l=Math.hypot(dx,dy);if(l>120){dx*=120/l;dy*=120/l;l=120}return{x:dx,y:dy,l}}
+
+// ---------- Level 1: Der Hirtenjunge ----------
+let sh=[],wv=[],dv={x:120,y:270},tgt=null;
+function init1(){sh=[];for(let i=0;i<5;i++)sh.push({x:150+Math.random()*450,y:60+Math.random()*420,in:false});wv=[{x:480,y:30,f:0},{x:480,y:510,f:0}];dv={x:120,y:270}}
+function up1(dt){
+ if(tgt){const dx=tgt.x-dv.x,dy=tgt.y-dv.y,l=Math.hypot(dx,dy);if(l>6){dv.x+=dx/l*210*dt;dv.y+=dy/l*210*dt}}
+ for(const s of sh){if(s.in)continue;const dx=dv.x-s.x,dy=dv.y-s.y,l=Math.hypot(dx,dy);
+  if(l<160&&l>45){s.x+=dx/l*100*dt;s.y+=dy/l*100*dt}
+  if(s.x>810&&s.x<930&&s.y>210&&s.y<330)s.in=true}
+ for(const w of wv){
+  if(w.f>0){w.f-=dt;const dx=w.x-dv.x,dy=w.y-dv.y,l=Math.hypot(dx,dy)||1;w.x=Math.min(W,Math.max(0,w.x+dx/l*190*dt));w.y=Math.min(H,Math.max(0,w.y+dy/l*190*dt));continue}
+  let b=null,bd=1e9;for(const s of sh)if(!s.in){const d=Math.hypot(s.x-w.x,s.y-w.y);if(d<bd){bd=d;b=s}}
+  if(!b)continue;w.x+=(b.x-w.x)/(bd||1)*75*dt;w.y+=(b.y-w.y)/(bd||1)*75*dt;
+  if(Math.hypot(dv.x-w.x,dv.y-w.y)<110)w.f=3;
+  else if(bd<24){hp--;w.f=3;say('Ein Wolf war bei den Schafen! Pass auf!',2)}}
+ if(sh.every(s=>s.in))fin();else if(hp<=0)S='lost'}
+function d1(){X.fillStyle='#8cc152';X.fillRect(0,0,W,H);for(let i=0;i<14;i++)Ci(60+i*70,(i*97)%H,24,'#7ab142');
+ X.strokeStyle='#8a5a2b';X.lineWidth=8;X.strokeRect(800,200,140,140);T('Gehege',870,180,18,'#3a2410');
+ for(const s of sh){Ci(s.x,s.y,17,'#fafafa');Ci(s.x+14,s.y-3,8,'#444')}
+ for(const w of wv){Ci(w.x,w.y,18,'#777');Ci(w.x+15,w.y-2,9,'#555');Ci(w.x+18,w.y-4,2,'#f33');if(w.f>0)T('!',w.x,w.y-30,26,'#fff')}
+ Ci(dv.x,dv.y,16,'#3f7fbf');Ci(dv.x,dv.y,9,'#f0c8a0')}
+function l1(){d1();hud()}
+function hud(){R(12,12,200,44,12,'rgba(0,0,0,.35)');T('Mut',50,34,20,'#fff');for(let i=0;i<hp;i++)T('♥',100+i*30,34,26,'#ff6b7a');
+ if(lv===3){R(12,62,200,40,12,'rgba(0,0,0,.35)');T('Steine '+got+'/5',100,82,20,'#fff')}
+ if(!prayed)B(792,14,156,48,'🙏 Beten',pray,'#f4e3a1');mbox()}
+function mbox(){if(msgT>0){R(60,452,840,76,14,'rgba(0,0,0,.65)');WR(msg,W/2,478,800,20,'#fff',28)}}
+
+// ---------- Level 2: Die Harfe ----------
+const LX=[330,480,630],HZ=440;let nt=[],nsp=0,hit=0,ntm=1,fb=0;
+function init2(){nt=[];nsp=0;hit=0;ntm=1;fb=0}
+function up2(dt){ntm-=dt;if(ntm<=0&&nsp<20){nt.push({l:Math.floor(Math.random()*3),y:-20});nsp++;ntm=.85}
+ for(const n of nt){n.y+=270*dt;if(!n.miss&&!n.gone&&n.y>HZ+55){n.miss=1;fb=.3}}
+ nt=nt.filter(n=>n.y<H+30);
+ if(nsp>=20&&!nt.length){if(hit>=12)fin();else S='lost'}}
+function tap2(l){let b=null;for(const n of nt)if(n.l===l&&!n.miss&&!n.gone&&Math.abs(n.y-HZ)<55&&(!b||Math.abs(n.y-HZ)<Math.abs(b.y-HZ)))b=n;if(b){b.gone=1;hit++}else fb=.3}
+function d2(){const m=Math.min(1,hit/12),c=(a,b)=>Math.round(a+(b-a)*m);X.fillStyle='rgb('+c(29,255)+','+c(26,233)+','+c(51,168)+')';X.fillRect(0,0,W,H);
+ X.fillStyle='rgba(255,255,255,.14)';for(const x of LX)X.fillRect(x-65,0,130,H);
+ X.fillStyle=fb>0?'#ff8a8a':'#ffd75e';X.fillRect(255,HZ-3,450,6);
+ for(const n of nt)if(!n.gone){Ci(LX[n.l],n.y,26,n.miss?'#8a7a63':'#e8a33d');T('♪',LX[n.l],n.y,30,'#3a2410')}
+ R(60,330,120,140,10,'#7a5a3a');R(85,365,70,105,12,'#b04a4a');Ci(120,338,28,'#f0c8a0');R(98,300,44,14,3,'#e8c040');
+ Ci(110,334,3,'#222');Ci(130,334,3,'#222');X.strokeStyle='#222';X.lineWidth=3;X.beginPath();
+ if(m>.5)X.arc(120,340,10,.2,2.94);else X.arc(120,356,10,3.34,6.08);X.stroke();
+ R(330,14,300,30,15,'rgba(0,0,0,.5)');R(332,16,Math.max(0,296*m),26,13,'#e8a33d');T('Sauls Stimmung',480,30,17,'#fff')}
+function l2(){d2();mbox()}
+
+// ---------- Level 3: Der Weg zum Schlachtfeld ----------
+const RK=[500,900,1250,1700,2100,2500,2900],ST=[[700,G-110],[1100,G-110],[1500,G-30],[1950,G-110],[2400,G-110]],END=3200;
+let p3={x:0,y:G,vy:0,inv:0},got=0;
+function init3(){p3={x:0,y:G,vy:0,inv:0};got=0;ST.forEach(s=>s.c=0)}
+function jump(){if(S==='l3'&&p3.y>=G-1)p3.vy=-650}
+function up3(dt){const p=p3;p.x+=230*dt;p.vy+=1700*dt;p.y+=p.vy*dt;if(p.y>=G){p.y=G;p.vy=0}p.inv-=dt;
+ for(const r of RK)if(Math.abs(p.x-r)<34&&p.y>G-44&&p.inv<=0){hp--;p.inv=1.2}
+ for(const s of ST)if(!s.c&&Math.hypot(p.x-s[0],p.y-35-s[1])<40){s.c=1;got++}
+ if(hp<=0)S='lost';else if(p.x>=END)fin()}
+function d3(){sky();const cx=p3.x-200;
+ for(const r of RK){const x=r-cx;if(x>-60&&x<W+60){R(x-22,G-44,44,44,10,'#8a8478');R(x-14,G-52,28,14,6,'#9c968a')}}
+ for(const s of ST)if(!s.c){const x=s[0]-cx;Ci(x,s[1],13,'rgba(255,255,255,.5)');Ci(x,s[1],8,'#cfcfcf')}
+ const ex=END-cx;if(ex<W+100){X.fillStyle='#e8d8b0';X.beginPath();X.moveTo(ex,G-110);X.lineTo(ex-70,G);X.lineTo(ex+70,G);X.fill();R(ex-2,G-150,4,45,0,'#6b4a2b');R(ex+2,G-150,30,18,0,'#c0504d')}
+ if(p3.inv<=0||Math.floor(t*12)%2){const x=200,y=p3.y,k=Math.sin(t*14)*5;R(x-14,y-30,10,30+k*(y>=G),3,'#6b4a2b');R(x+2,y-30,10,30-k*(y>=G),3,'#6b4a2b');R(x-16,y-72,32,46,8,'#3f7fbf');Ci(x,y-86,14,'#f0c8a0');R(x-22,y-62,12,22,4,'#a0764a')}}
+function l3(){d3();hud()}
+function done(){sky();R(130,90,700,320,22,'rgba(255,251,232,.94)');T(DONE[lv][0],W/2,150,42,'#3a2410');WR(DONE[lv][1],W/2,225,620,24,'#5a3a1c',32);
+ if(lv===3)T(got+' von 5 glatten Steinen gesammelt',W/2,310,24,'#3a2410');B(360,340,240,60,'Weiter zum Quiz',()=>{S='quiz'},'#7ac36a')}
+
+// ---------- Bildschirme ----------
+function menu(){sky();for(let i=0;i<3;i++)soldier(60+i*42,0,'#c0504d');david();
+ T('Davids Weg',W/2+3,133,92,'rgba(0,0,0,.25)');T('Davids Weg',W/2,130,92,'#fff7e0');
+ T('Ein Abenteuer in 4 Levels',W/2,205,30,'#3a2410');
+ B(350,270,260,76,'Spielen',()=>{stars=0;carry=5;startLevel(1)},'#e8a33d');
+ B(24,20,180,48,'← Spiele',()=>{location.href='index.html'},'#c9b27a')}
+
+function play(){scene();
+ if(!shot)T('Zieh nach hinten und lass los – ziele auf die Stirn!',W/2,60,26,'#3a2410');
+ const ti=Math.floor(t/4)%TAUNTS.length;R(560,110,300,50,14,'#fffbe8');T(TAUNTS[ti],710,135,17,'#5a1a1a');
+ if(!prayed&&!stone)B(792,14,156,48,'🙏 Beten',pray,'#f4e3a1');
+ if(msgT>0){R(60,452,840,76,14,'rgba(0,0,0,.65)');WR(msg,W/2,478,800,20,'#fff',28)}}
+
+function pray(){prayed=true;if(lv===4)stones++;else hp++;if(lv===3)p3.inv=1.5;if(S==='lost')S=PS[lv];say(PV[lv],6)}
+
+function lost(){[0,d1,d2,d3,scene][lv]();R(180,150,600,250,20,'rgba(0,0,0,.75)');
+ T(lv===4?'Keine Steine mehr!':'Das hat nicht geklappt!',W/2,205,38,'#ffd75e');
+ T('Versuch es nochmal'+(lv===2?'.':' – oder bete zuerst.'),W/2,255,22,'#fff');
+ B(lv===2?380:260,300,200,64,'Nochmal',()=>startLevel(lv),'#e8a33d');
+ if(!prayed&&lv!==2)B(500,300,200,64,'🙏 Beten',pray,'#f4e3a1')}
+
+function won(){scene();
+ if(wt>0.8){R(130,90,700,110,20,'rgba(0,0,0,.7)');T('Goliat ist gefallen!',W/2,128,40,'#ffd75e');T('Gott hat geholfen – auch durch einen Kleinen.',W/2,172,22,'#fff')}
+ if(wt>2.5)B(360,300,240,64,'Weiter zum Quiz',()=>{S='quiz'},'#7ac36a')}
+
+function quiz(){X.fillStyle='#2f4a2a';X.fillRect(0,0,W,H);const Z=QZ[lv],q=Z[qi];
+ T('Level '+lv+' – Frage '+(qi+1)+' von '+Z.length,W/2,48,26,'#ffd75e');WR(q[0],W/2,110,820,34,'#fff',40);
+ q[1].forEach((o,i)=>{let c='#e8a33d';if(qres!==null)c=i===q[2]?'#5cb85c':(i===qres?'#d9534f':'#8a7a63');
+  B(130,170+i*86,700,64,o,()=>{if(qres===null){qres=i;if(i===q[2])stars++}},c)});
+ if(qres!==null)B(370,440,220,60,'Weiter',()=>{qres=null;if(++qi>=Z.length){if(lv<4)startLevel(lv+1);else S='end'}},'#9bd68c')}
+
+function end(){sky();R(110,50,740,420,24,'rgba(255,251,232,.92)');
+ T('Geschafft!',W/2,110,56,'#3a2410');
+ T('★'.repeat(stars)+'☆'.repeat(9-stars),W/2,190,52,'#e8a33d');
+ T(stars+' von 9 richtig',W/2,250,24,'#3a2410');
+ WR(VERSE,W/2,315,640,24,'#5a3a1c',32);
+ B(340,395,280,60,'Zurück zum Menü',()=>{S='menu'},'#e8a33d')}
+
+// ---------- Logik ----------
+function win(){S='won';wt=0}
+function update(dt){t+=dt;if(msgT>0)msgT-=dt;if(fb>0)fb-=dt;
+ if(S==='l1')up1(dt);if(S==='l2')up2(dt);if(S==='l3')up3(dt);
+ if(S==='won'){wt+=dt;fall=Math.min(1,wt/1.2)}
+ if(stone){stone.vy+=GRAV*dt;stone.x+=stone.vx*dt;stone.y+=stone.vy*dt;
+  if(Math.hypot(stone.x-GX,stone.y-HY)<30){stone=null;win()}
+  else if(Math.abs(stone.x-GX)<40&&stone.y>HY+25&&stone.y<G){stone=null;say('Das war der Körper. Ziele auf die Stirn!')}
+  else if(stone.y>G||stone.x>W+20||stone.x<-20){stone=null;say('Daneben! Versuch es noch einmal.')}}
+ if(!stone&&S==='play'&&stones<=0&&!drag)S='lost'}
+
+// ---------- Eingabe ----------
+function pt(e){const r=C.getBoundingClientRect();return{x:(e.clientX-r.left)*W/r.width,y:(e.clientY-r.top)*H/r.height}}
+C.addEventListener('pointerdown',e=>{const p=pt(e);
+ for(const b of btns)if(p.x>b.x&&p.x<b.x+b.w&&p.y>b.y&&p.y<b.y+b.h){b.fn();return}
+ if(S==='l1')tgt=p;
+ if(S==='l3')jump();
+ if(S==='l2'){const l=LX.findIndex(x=>Math.abs(p.x-x)<70);if(l>=0)tap2(l)}
+ if(S==='play'&&!stone&&stones>0)drag={sx:p.x,sy:p.y,x:p.x,y:p.y}});
+C.addEventListener('pointermove',e=>{if(drag){const p=pt(e);drag.x=p.x;drag.y=p.y}if(tgt&&S==='l1')tgt=pt(e)});
+function release(){if(!drag)return;const v=pull();drag=null;
+ if(v.l>15){stone={x:SX,y:SY,vx:v.x*8,vy:v.y*8};stones--;shot=true}}
+addEventListener('pointerup',()=>{tgt=null;release()});
+addEventListener('keydown',e=>{const k=e.key.toLowerCase();if(S==='l2'){const l='asd'.indexOf(k);if(l>=0)tap2(l)}if(S==='l3'&&(k===' '||k==='arrowup'||k==='w'))jump()});
+addEventListener('pointercancel',()=>{drag=null});
+
+// ---------- Hauptschleife ----------
+let last=performance.now();
+function loop(n){const dt=Math.min(.05,(n-last)/1000);last=n;update(dt);btns=[];
+ ({menu,play,lost,won,quiz,end,l1,l2,l3,done})[S]();requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

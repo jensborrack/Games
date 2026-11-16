@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Snake</title>
+<style>
+  :root { --bg:#1b1a38; --feld1:#25234a; --feld2:#2c2a58; --text:#f1eefc; }
+  * { box-sizing: border-box; }
+  html, body { margin:0; height:100%; background:var(--bg); color:var(--text);
+    font-family:"Trebuchet MS", Verdana, sans-serif; touch-action:none; overflow:hidden; }
+  body { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; }
+  #punkte { font-size:1.3rem; font-weight:bold; }
+  #topbar { width:100%; max-width:800px; display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  #zurueck { color:var(--text); opacity:.8; text-decoration:none; font-size:1rem; font-weight:bold;
+    padding:6px 14px; border-radius:10px; background:rgba(0,0,0,.25); }
+  canvas { width:min(94vw, 62vh); height:auto; border-radius:14px; }
+  #hilfe { font-size:.9rem; opacity:.7; text-align:center; padding:0 12px; }
+</style>
+</head>
+<body>
+  <div id="topbar">
+  <a id="zurueck" href="index.html">&#8592; Spiele</a>
+  <div id="punkte">Punkte: 0 &nbsp; Rekord: 0</div>
+</div>
+  <canvas id="c"></canvas>
+  <div id="hilfe">Wischen oder Pfeiltasten / WASD. Tippen oder Leertaste startet.</div>
+
+<script>
+// ===== Hier kann man herumspielen! =====
+const GITTER = 20;            // Spielfeld: 20 x 20 Felder
+const TEMPO = 140;            // Millisekunden pro Schritt (kleiner = schneller)
+const SCHNELLER = 3;          // so viel schneller wird es pro Apfel
+const MIN_TEMPO = 60;         // schneller als das wird es nie
+const FARBE_SCHLANGE = "#6fe3a0";
+const FARBE_KOPF = "#c9ffe0";
+const FARBE_APFEL = "#ffb347";
+// =======================================
+
+const FELD = 24;                       // Pixel pro Feld
+const canvas = document.getElementById("c");
+const ctx = canvas.getContext("2d");
+canvas.width = canvas.height = GITTER * FELD;
+
+let schlange, richtung, naechste, apfel, punkte, zustand = "start";
+let rekord = 0;
+try { rekord = Number(localStorage.getItem("snake-rekord")) || 0; } catch (e) {}
+
+function neuesSpiel() {
+  const mitte = Math.floor(GITTER / 2);
+  schlange = [{x: mitte, y: mitte}, {x: mitte - 1, y: mitte}, {x: mitte - 2, y: mitte}];
+  richtung = naechste = {x: 1, y: 0};
+  punkte = 0;
+  neuerApfel();
+  zustand = "lauf";
+  schritt();
+}
+
+function neuerApfel() {
+  do {
+    apfel = {x: Math.floor(Math.random() * GITTER), y: Math.floor(Math.random() * GITTER)};
+  } while (schlange.some(s => s.x === apfel.x && s.y === apfel.y));
+}
+
+function schritt() {
+  if (zustand !== "lauf") return;
+  richtung = naechste;
+  const kopf = {x: schlange[0].x + richtung.x, y: schlange[0].y + richtung.y};
+
+  const gegenWand = kopf.x < 0 || kopf.y < 0 || kopf.x >= GITTER || kopf.y >= GITTER;
+  const gegenSich = schlange.some(s => s.x === kopf.x && s.y === kopf.y);
+  if (gegenWand || gegenSich) return ende();
+
+  schlange.unshift(kopf);
+  if (kopf.x === apfel.x && kopf.y === apfel.y) {
+    punkte++;
+    neuerApfel();
+  } else {
+    schlange.pop();
+  }
+  zeichne();
+  setTimeout(schritt, Math.max(MIN_TEMPO, TEMPO - punkte * SCHNELLER));
+}
+
+function ende() {
+  zustand = "ende";
+  if (punkte > rekord) {
+    rekord = punkte;
+    try { localStorage.setItem("snake-rekord", rekord); } catch (e) {}
+  }
+  zeichne();
+}
+
+function richtungSetzen(x, y) {
+  if (zustand !== "lauf") return;
+  if (x === -richtung.x && y === -richtung.y) return;   // nicht rückwärts
+  naechste = {x, y};
+}
+
+function zeichne() {
+  for (let x = 0; x < GITTER; x++) for (let y = 0; y < GITTER; y++) {
+    ctx.fillStyle = (x + y) % 2 ? "#2c2a58" : "#25234a";
+    ctx.fillRect(x * FELD, y * FELD, FELD, FELD);
+  }
+  if (schlange) {
+    ctx.fillStyle = FARBE_APFEL;
+    ctx.beginPath();
+    ctx.arc((apfel.x + .5) * FELD, (apfel.y + .5) * FELD, FELD * .38, 0, Math.PI * 2);
+    ctx.fill();
+    schlange.forEach((s, i) => {
+      ctx.fillStyle = i === 0 ? FARBE_KOPF : FARBE_SCHLANGE;
+      ctx.beginPath();
+      ctx.roundRect(s.x * FELD + 1, s.y * FELD + 1, FELD - 2, FELD - 2, 7);
+      ctx.fill();
+    });
+  }
+  if (zustand !== "lauf") {
+    ctx.fillStyle = "rgba(20,18,45,.78)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#f1eefc";
+    ctx.textAlign = "center";
+    ctx.font = "bold 40px 'Trebuchet MS', sans-serif";
+    ctx.fillText(zustand === "start" ? "Snake" : "Game Over", canvas.width / 2, canvas.height / 2 - 10);
+    ctx.font = "20px 'Trebuchet MS', sans-serif";
+    ctx.fillText(zustand === "start" ? "Tippen zum Starten" : "Punkte: " + punkte + " – nochmal tippen", canvas.width / 2, canvas.height / 2 + 28);
+  }
+  document.getElementById("punkte").innerHTML = "Punkte: " + (punkte || 0) + " &nbsp; Rekord: " + rekord;
+}
+
+// Tastatur
+document.addEventListener("keydown", e => {
+  const k = e.key.toLowerCase();
+  if (k === "arrowup" || k === "w") richtungSetzen(0, -1);
+  else if (k === "arrowdown" || k === "s") richtungSetzen(0, 1);
+  else if (k === "arrowleft" || k === "a") richtungSetzen(-1, 0);
+  else if (k === "arrowright" || k === "d") richtungSetzen(1, 0);
+  else if ((k === " " || k === "enter") && zustand !== "lauf") neuesSpiel();
+  if (k.startsWith("arrow") || k === " ") e.preventDefault();
+});
+
+// Touch: wischen = lenken, tippen = starten
+let tx, ty;
+document.addEventListener("touchstart", e => { tx = e.touches[0].clientX; ty = e.touches[0].clientY; });
+document.addEventListener("touchend", e => {
+  const dx = e.changedTouches[0].clientX - tx, dy = e.changedTouches[0].clientY - ty;
+  if (Math.abs(dx) < 20 && Math.abs(dy) < 20) { if (zustand !== "lauf") neuesSpiel(); return; }
+  if (Math.abs(dx) > Math.abs(dy)) richtungSetzen(dx > 0 ? 1 : -1, 0);
+  else richtungSetzen(0, dy > 0 ? 1 : -1);
+});
+canvas.addEventListener("click", () => { if (zustand !== "lauf") neuesSpiel(); });
+
+zeichne();
+</script>
+</body>
+</html>

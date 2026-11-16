@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Spiele</title>
+<style>
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; height: 100%;
+  font-family: "Trebuchet MS", Verdana, sans-serif;
+  color: #f1eefc;
+  -webkit-user-select: none; user-select: none;
+  touch-action: none;
+}
+body {
+  background: #17162e;
+  background-image:
+    radial-gradient(ellipse 60% 45% at 18% 12%, rgba(126,200,232,.14), transparent),
+    radial-gradient(ellipse 55% 45% at 82% 50%, rgba(111,227,160,.12), transparent),
+    radial-gradient(ellipse 65% 55% at 50% 95%, rgba(232,163,61,.10), transparent);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 4vh; padding: 16px;
+}
+h1 { margin: 0; font-size: clamp(1.6rem, 5.4vh, 3rem); letter-spacing: 2px; }
+.unter { margin: -2vh 0 0; opacity: .6; font-size: clamp(.75rem, 2.2vh, 1rem); }
+.karten { display: flex; flex-wrap: wrap; justify-content: center; gap: 4vw; }
+a.karte {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.4vh;
+  width: min(300px, 42vw); min-height: 34vh;
+  padding: 20px; border-radius: 22px;
+  text-decoration: none; color: inherit;
+  border: 2px solid rgba(255,255,255,.10);
+  box-shadow: 0 10px 26px rgba(0,0,0,.38), inset 0 1px 0 rgba(255,255,255,.12);
+  transition: transform .12s ease;
+}
+a.karte:active { transform: scale(.97); }
+.karte .emoji { font-size: clamp(3rem, 12vh, 5.5rem); line-height: 1; }
+.karte .titel { font-weight: bold; font-size: clamp(1.15rem, 4vh, 1.7rem); }
+.karte .text { font-size: .9rem; opacity: .75; text-align: center; }
+.david { background: linear-gradient(160deg, #2f5d2a, #1c2a1a 70%); border-color: #6fae4f; }
+.david .titel { color: #fff7e0; }
+.snake { background: linear-gradient(160deg, #35325f, #221f4c 70%); border-color: #7b74e8; }
+.snake .titel { color: #f1eefc; }
+</style>
+</head>
+<body>
+<h1>Spiele</h1>
+<p class="unter">Wähle ein Spiel</p>
+<div class="karten">
+  <a class="karte david" href="davids-weg.html">
+    <div class="emoji">&#128017;</div>
+    <div class="titel">Davids Weg</div>
+    <div class="text">Ein Abenteuer in 4 Levels&ensp;&#183;&ensp;Schafe, Harfe, Steine</div>
+  </a>
+  <a class="karte snake" href="snake.html">
+    <div class="emoji">&#128013;</div>
+    <div class="titel">Snake</div>
+    <div class="text">Füttere die Schlange&ensp;&#183;&ensp;Wischen zum Lenken</div>
+  </a>
+</div>
+</body>
+</html>
