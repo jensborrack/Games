@@ -17,6 +17,10 @@ Ein Abenteuer in 4 Levels über den Hirtenjungen David und seinen Weg zu Gott �
 
 In allen Levels gibt es Quizfragen zur Geschichte und einen Gebets-Bonus (+1 Mut). So lernen die Kinder die biblische Geschichte spielerisch kennen.
 
+### 🐑 Wo ist mein Schaf?
+
+Ein Suchspiel für die Kleinsten (4-6 Jahre) nach dem Gleichnis vom verlorenen Schaf (Lukas 15) und Psalm 23: Der Hirte sucht sein Schäfchen hinter Büschen, Heuballen, Felsen und im dunklen Tal – 4 Suchbilder mit steigender Zahl an Verstecken, ohne Zeitdruck und ohne Verlieren. Jedes gefundene Schaf bringt einen Vers aus Psalm 23, am Ende feiern alle mit Lukas 15,6. Mit deutscher Sprachausgabe (falls verfügbar), freundlichen Tönen, Lautsprecher-Button zum Stummschalten und gemerkter höchster Stufe.
+
 ### 🐍 Snake
 
 Der Klassiker mit Swipe-Steuerung: Füttere die Schlange und werde länger – ohne Zeitdruck, perfekt zum Abschalten.
@@ -58,6 +62,7 @@ Voraussetzungen: Node 20+, Java 17 (Temurin), Android SDK (oder Android Studio i
 
 - Menü: `www/index.html`
 - Davids Weg: `www/davids-weg.html`
+- Wo ist mein Schaf? `www/wo-ist-mein-schaf/index.html`
 - Snake: `www/snake.html`
 
 Danach wie gewohnt commit & push:

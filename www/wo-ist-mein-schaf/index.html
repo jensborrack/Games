@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Wo ist mein Schaf?</title>
+<style>
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; height: 100%;
+  font-family: "Trebuchet MS", Verdana, sans-serif;
+  -webkit-user-select: none; user-select: none;
+  touch-action: none;
+  overflow: hidden;
+}
+#stage {
+  position: fixed; inset: 0;
+  background: #aee3fb;
+}
+#scene { display: block; width: 100%; height: 100%; }
+
+/* ------- Hinweisbanner ------- */
+#banner {
+  position: absolute; top: calc(8px + env(safe-area-inset-top));
+  left: 8px; right: 8px; margin: auto;
+  width: fit-content; max-width: calc(100% - 140px);
+  padding: 10px 24px;
+  background: rgba(23, 22, 46, .78);
+  color: #fff7e0;
+  font-size: clamp(1rem, 4.2vmin, 1.7rem);
+  text-align: center; border-radius: 999px;
+  pointer-events: none; z-index: 5;
+}
+
+/* ------- Lautsprecher-Button ------- */
+#muteBtn {
+  position: absolute; top: calc(8px + env(safe-area-inset-top)); right: 8px;
+  width: 56px; height: 56px; border-radius: 16px;
+  border: 2px solid rgba(255,255,255,.35);
+  background: rgba(23,22,46,.78); color: #fff7e0;
+  cursor: pointer; z-index: 30;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0;
+}
+#muteBtn:active { transform: scale(.93); }
+#muteBtn svg { width: 32px; height: 32px; }
+
+/* ------- Overlays ------- */
+#overlay {
+  position: absolute; inset: 0; z-index: 20;
+  display: none; align-items: center; justify-content: center;
+  background: rgba(12, 14, 30, .55);
+  padding: 16px;
+}
+#overlay.show { display: flex; }
+.karte-box {
+  background: #fffbe8; color: #3a2410;
+  border-radius: 26px; padding: clamp(16px, 4vmin, 34px) clamp(18px, 5vmin, 40px);
+  max-width: 660px; width: 100%; max-height: 94%;
+  overflow-y: auto; text-align: center;
+  box-shadow: 0 14px 40px rgba(0,0,0,.45);
+}
+.karte-box h1 { margin: 0 0 6px; font-size: clamp(1.5rem, 6vmin, 2.6rem); }
+.karte-box h2 { margin: 14px 0 4px; font-size: clamp(1.1rem, 4.6vmin, 1.7rem); }
+.karte-box .vers {
+  font-size: clamp(1.05rem, 4.4vmin, 1.5rem);
+  color: #4a6b1f; margin: 8px 0 2px; line-height: 1.35;
+}
+.karte-box .psalm {
+  text-align: left; display: inline-block;
+  font-size: clamp(.95rem, 3.6vmin, 1.15rem);
+  line-height: 1.5; margin: 6px 0; color: #4a3a20;
+}
+.karte-box .klein { font-size: clamp(.8rem, 3vmin, 1rem); opacity: .75; margin: 6px 0 0; }
+.karte-box .emoji-gross { font-size: clamp(3rem, 14vmin, 5.5rem); line-height: 1.1; margin: 4px 0; }
+.btn {
+  display: block; width: 100%; margin: 12px auto 0; padding: 16px 22px;
+  font-family: inherit; font-weight: bold;
+  font-size: clamp(1.15rem, 5vmin, 1.6rem);
+  border: none; border-radius: 18px; cursor: pointer;
+  background: #e8a33d; color: #3a2410;
+  box-shadow: 0 4px 0 #b57f27;
+}
+.btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #b57f27; }
+.btn.gruen { background: #7ac36a; box-shadow: 0 4px 0 #4f9440; }
+.btn.gruen:active { box-shadow: 0 2px 0 #4f9440; }
+.btn.klein-btn {
+  display: inline-block; width: auto; padding: 10px 20px;
+  font-size: clamp(.95rem, 3.8vmin, 1.15rem);
+  background: #c9b27a; box-shadow: 0 3px 0 #a08a55;
+  margin-top: 8px;
+}
+.zurueck {
+  display: inline-block; margin-bottom: 10px; padding: 8px 16px;
+  font-size: clamp(.9rem, 3.4vmin, 1.05rem);
+  background: rgba(23,22,46,.12); color: #3a2410;
+  border-radius: 12px; text-decoration: none; font-weight: bold;
+}
+
+/* ------- SVG-Animationen ------- */
+.hit { pointer-events: all; cursor: pointer; }
+.hidden-content { visibility: hidden; transform-box: fill-box; transform-origin: 50% 100%; }
+.spot.revealed .hidden-content { visibility: visible; animation: pop .55s ease-out both; }
+@keyframes pop {
+  0% { transform: scale(.1); opacity: 0; }
+  60% { transform: scale(1.18); opacity: 1; }
+  80% { transform: scale(.96); }
+  100% { transform: scale(1); opacity: 1; }
+}
+.spot.revealed .hidden-content.wiggle { animation: wiggle .7s ease-in-out infinite; }
+.cover-anim { transform-box: fill-box; transform-origin: 50% 100%; }
+.spot.revealed .cover-anim { animation: wegda .5s ease-in both; }
+@keyframes wegda {
+  to { transform: translateY(34px) scale(.55); opacity: 0; }
+}
+.spot.revealed { pointer-events: none; }
+.hint-star { animation: bob 1s ease-in-out infinite; }
+@keyframes bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
+}
+.float { animation: floaty 4s ease-in-out infinite; }
+@keyframes floaty {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-7px); }
+}
+.twinkle { animation: twinkle 2.4s ease-in-out infinite; }
+@keyframes twinkle { 50% { opacity: .2; } }
+.wiggle { animation: wiggle .7s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 100%; }
+@keyframes wiggle {
+  0%, 100% { transform: rotate(-4deg); }
+  50% { transform: rotate(4deg); }
+}
+.schritt { animation: schritt .35s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 100%; }
+@keyframes schritt {
+  0%, 100% { transform: translateY(0) rotate(-1.5deg); }
+  50% { transform: translateY(-4px) rotate(1.5deg); }
+}
+</style>
+</head>
+<body>
+<div id="stage">
+  <svg id="scene" viewBox="0 0 1000 620" preserveAspectRatio="xMidYMid meet" aria-label="Suchbild mit B\u00FCschen und Felsen"></svg>
+  <div id="banner">Wo ist mein Schaf?</div>
+  <button id="muteBtn" aria-label="Ton an oder aus">
+    <svg id="muteIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></svg>
+  </button>
+  <div id="overlay"><div class="karte-box" id="overlayBox"></div></div>
+</div>
+
+<script>
+'use strict';
+// ============================================================
+// Wo ist mein Schaf?  -  Suchspiel nach Lukas 15 und Psalm 23
+// Reines HTML/CSS/Vanilla-JS, komplett offline, fuer 4-6 Jahre.
+// ============================================================
+var VBW = 1000, VBH = 620, HORIZON = 400;
+var svg = document.getElementById('scene');
+var stage = document.getElementById('stage');
+var banner = document.getElementById('banner');
+var overlay = document.getElementById('overlay');
+var overlayBox = document.getElementById('overlayBox');
+var muteBtn = document.getElementById('muteBtn');
+var muteIcon = document.getElementById('muteIcon');
+
+// ---------------- Paletten ----------------
+var PAL_TAG = {
+  sky1: '#aee3fb', sky2: '#e9f8ff',
+  hill: '#8fbf5e', hill2: '#77a94a',
+  ground1: '#8cc65b', ground2: '#5f9a36', groundFlat: '#5f9a36',
+  grass: '#4e8630'
+};
+var PAL_NACHT = {
+  sky1: '#131a3a', sky2: '#33427c',
+  hill: '#2c5432', hill2: '#24482a',
+  ground1: '#31532f', ground2: '#213b22', groundFlat: '#213b22',
+  grass: '#2e5429'
+};
+
+// ---------------- Level ----------------
+var LEVELS = [
+  {
+    name: 'Auf der gr\u00FCnen Wiese',
+    pal: PAL_TAG,
+    pool: ['\uD83E\uDD8B', '\uD83D\uDC1E', '\uD83D\uDC1B'],
+    names: { '\uD83E\uDD8B': 'ein Schmetterling', '\uD83D\uDC1E': 'ein Marienk\u00E4fer', '\uD83D\uDC1B': 'eine Raupe' },
+    spots: [
+      { x: 400, y: 500, t: 'bush' },
+      { x: 620, y: 472, t: 'hay' },
+      { x: 845, y: 505, t: 'flowers' }
+    ],
+    vers: 'Der HERR ist mein Hirte. (Psalm 23,1)'
+  },
+  {
+    name: 'Bei den stillen Wassern',
+    pal: PAL_TAG,
+    pool: ['\uD83D\uDC38', '\uD83E\uDD85', '\uD83D\uDC0C'],
+    names: { '\uD83D\uDC38': 'ein Frosch', '\uD83E\uDD85': 'eine Ente', '\uD83D\uDC0C': 'eine Schnecke' },
+    spots: [
+      { x: 385, y: 505, t: 'pond' },
+      { x: 565, y: 470, t: 'rock' },
+      { x: 765, y: 496, t: 'bush' },
+      { x: 900, y: 522, t: 'log' }
+    ],
+    vers: 'Er l\u00E4sst mich lagern an frischem Wasser. (Psalm 23,2)'
+  },
+  {
+    name: 'Im Felsental',
+    pal: PAL_TAG,
+    pool: ['\uD83D\uDC30', '\uD83D\uDC0F', '\uD83D\uDC23'],
+    names: { '\uD83D\uDC30': 'ein Hase', '\uD83D\uDC0F': 'ein Widder', '\uD83D\uDC23': 'ein K\u00FCken' },
+    spots: [
+      { x: 385, y: 478, t: 'rocks' },
+      { x: 520, y: 512, t: 'bush' },
+      { x: 665, y: 472, t: 'tree' },
+      { x: 800, y: 505, t: 'flowers' },
+      { x: 925, y: 468, t: 'hay' }
+    ],
+    vers: 'Er f\u00FChrt mich zurecht. (Psalm 23,3)'
+  },
+  {
+    name: 'Das dunkle Tal \u2013 der HERR ist bei dir!',
+    pal: PAL_NACHT,
+    pool: ['\uD83E\uDD94', '\uD83E\uDD89', '\uD83D\uDC30'],
+    names: { '\uD83E\uDD94': 'ein Igel', '\uD83E\uDD89': 'eine Eule', '\uD83D\uDC30': 'ein Hase' },
+    spots: [
+      { x: 400, y: 472, t: 'cave' },
+      { x: 565, y: 512, t: 'bush' },
+      { x: 725, y: 472, t: 'hollow' },
+      { x: 880, y: 498, t: 'rock' }
+    ],
+    vers: 'Auch wenn ich durch ein dunkles Tal gehe \u2013 du bist bei mir. (Psalm 23,4)'
+  }
+];
+
+// ---------------- Spielzustand ----------------
+var state = 'start';           // 'start' | 'play' | 'found' | 'finale'
+var level = 1;
+var unlocked = 1;
+var sheepIdx = 0;
+var wrongCount = 0;
+var spots = [];                // {x,y,t,emoji,isSheep,revealed}
+var baseBanner = '';
+var banTimer = null;
+var hintEls = [];              // Hinweis-Sterne
+var muted = false;
+
+try {
+  if (window.localStorage) {
+    var s = localStorage.getItem('wims.unlocked');
+    if (s) {
+      var u = parseInt(s, 10);
+      if (u >= 1 && u <= LEVELS.length) unlocked = u;
+    }
+    if (localStorage.getItem('wims.muted') === '1') muted = true;
+  }
+} catch (e) { /* ohne Speicher normal weiterspielen */ }
+
+// ---------------- Web Audio ----------------
+var AC = null, master = null, soundAllowed = false;
+function ensureAudio() {
+  soundAllowed = true;
+  try {
+    var Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return;
+    if (!AC) {
+      AC = new Ctx();
+      master = AC.createGain();
+      master.gain.value = .5;
+      master.connect(AC.destination);
+    }
+    if (AC.state === 'suspended') AC.resume();
+  } catch (e) { AC = null; }
+}
+function tone(f0, f1, dur, type, vol, delay) {
+  if (!AC || muted) return;
+  try {
+    var t = AC.currentTime + (delay || 0);
+    var o = AC.createOscillator(), g = AC.createGain();
+    o.type = type || 'sine';
+    o.frequency.setValueAtTime(f0, t);
+    if (f1) o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+    g.gain.setValueAtTime(.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol || .3, t + .02);
+    g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    o.connect(g); g.connect(master);
+    o.start(t); o.stop(t + dur + .05);
+  } catch (e) { }
+}
+function sndPlop() { tone(520, 190, .16, 'sine', .32); tone(880, 340, .09, 'sine', .1, .02); }
+function sndSoft() { tone(230, 150, .3, 'triangle', .22); }
+function sndBleat() {
+  tone(430, 360, .13, 'sawtooth', .16, 0);
+  tone(340, 300, .15, 'sawtooth', .13, .11);
+  tone(430, 360, .13, 'sawtooth', .13, .3);
+  tone(330, 280, .17, 'sawtooth', .1, .42);
+}
+function sndWin() { [523, 659, 784, 1047].forEach(function (f, i) { tone(f, null, .3, 'triangle', .28, i * .13); }); }
+function sndFinale() { [523, 587, 659, 784, 880, 1047, 1319].forEach(function (f, i) { tone(f, null, .38, 'triangle', .26, i * .15); }); }
+
+// ---------------- Sprachausgabe ----------------
+var deVoice = undefined;
+function pickVoice() {
+  if (deVoice !== undefined) return deVoice;
+  deVoice = null;
+  try {
+    var vs = speechSynthesis.getVoices() || [];
+    for (var i = 0; i < vs.length; i++)
+      if (vs[i].lang && vs[i].lang.toLowerCase().indexOf('de') === 0) { deVoice = vs[i]; break; }
+  } catch (e) { }
+  return deVoice;
+}
+function say(txt) {
+  if (muted || !soundAllowed || !txt || !('speechSynthesis' in window)) return;
+  try {
+    speechSynthesis.cancel();
+    var u = new SpeechSynthesisUtterance(txt);
+    u.lang = 'de-DE'; u.rate = .95; u.pitch = 1.1;
+    var v = pickVoice();
+    if (v) u.voice = v;
+    speechSynthesis.speak(u);
+  } catch (e) { }
+}
+try {
+  if ('speechSynthesis' in window)
+    speechSynthesis.onvoiceschanged = function () { deVoice = undefined; };
+} catch (e) { }
+
+// ---------------- Mute-Button ----------------
+function drawMuteIcon() {
+  var base = '<path d="M3 9v6h4l5 5V4L7 9H3z" fill="currentColor" stroke="none"/>';
+  var waves = muted
+    ? '<path d="M16 8l6 8M22 8l-6 8"/>'
+    : '<path d="M15.5 8.5a5 5 0 010 7"/><path d="M18 6a9 9 0 010 12"/>';
+  muteIcon.innerHTML = base + waves;
+}
+muteBtn.addEventListener('pointerdown', function (e) {
+  e.stopPropagation();
+  muted = !muted;
+  if (muted && 'speechSynthesis' in window) { try { speechSynthesis.cancel(); } catch (err) { } }
+  drawMuteIcon();
+  try { if (window.localStorage) localStorage.setItem('wims.muted', muted ? '1' : '0'); } catch (err) { }
+  if (!muted) { ensureAudio(); sndPlop(); }
+});
+drawMuteIcon();
+
+// Erster Tipp: Audio freigeben (Autoplay-Regeln)
+document.addEventListener('pointerdown', function () { ensureAudio(); }, true);
+
+// ---------------- Banner ----------------
+function showBanner(txt) {
+  baseBanner = txt;
+  if (banTimer) { clearTimeout(banTimer); banTimer = null; }
+  banner.textContent = txt;
+}
+function flashBanner(txt, ms) {
+  if (banTimer) clearTimeout(banTimer);
+  banner.textContent = txt;
+  banTimer = setTimeout(function () {
+    banTimer = null;
+    banner.textContent = baseBanner;
+  }, ms || 2600);
+}
+
+// ---------------- SVG-Bausteine ----------------
+function sheepSVG() {
+  return '<g>'
+    + '<rect x="-22" y="-16" width="8" height="18" rx="3" fill="#4a3b2f"/>'
+    + '<rect x="12" y="-16" width="8" height="18" rx="3" fill="#4a3b2f"/>'
+    + '<ellipse cx="0" cy="-32" rx="34" ry="27" fill="#fcfbf4"/>'
+    + '<circle cx="-18" cy="-46" r="17" fill="#fcfbf4"/>'
+    + '<circle cx="2" cy="-56" r="18" fill="#fcfbf4"/>'
+    + '<circle cx="22" cy="-46" r="15" fill="#fcfbf4"/>'
+    + '<ellipse cx="36" cy="-42" rx="13" ry="11" fill="#4a3b2f"/>'
+    + '<ellipse cx="30" cy="-53" rx="7" ry="4" fill="#4a3b2f" transform="rotate(-25 30 -53)"/>'
+    + '<circle cx="40" cy="-45" r="2.4" fill="#ffffff"/>'
+    + '<circle cx="40.7" cy="-45" r="1.2" fill="#222222"/>'
+    + '</g>';
+}
+function coverSVG(t) {
+  switch (t) {
+    case 'bush':
+      return '<g class="cover-anim">'
+        + '<circle cx="-28" cy="-20" r="22" fill="#4c8d3c"/>'
+        + '<circle cx="30" cy="-12" r="19" fill="#42853a"/>'
+        + '<circle cx="12" cy="-30" r="25" fill="#54a044"/>'
+        + '<ellipse cx="0" cy="-12" rx="52" ry="32" fill="#3f7d33"/>'
+        + '<circle cx="-8" cy="-32" r="4" fill="#f2b8d0"/>'
+        + '<circle cx="22" cy="-20" r="4" fill="#f2e27a"/>'
+        + '</g>';
+    case 'hay':
+      return '<g class="cover-anim">'
+        + '<circle cy="-32" r="35" fill="#e2b64c" stroke="#b78f2f" stroke-width="3"/>'
+        + '<circle cy="-32" r="22" fill="none" stroke="#c79a33" stroke-width="3"/>'
+        + '<circle cy="-32" r="10" fill="none" stroke="#c79a33" stroke-width="3"/>'
+        + '</g>';
+    case 'flowers':
+      return '<g class="cover-anim">'
+        + '<path d="M-30 0 Q-28 -22 -34 -38 M0 0 Q2 -20 -6 -44 M28 0 Q30 -24 24 -40" stroke="#3e7d33" stroke-width="5" fill="none" stroke-linecap="round"/>'
+        + '<circle cx="-36" cy="-44" r="10" fill="#f28ab2"/>'
+        + '<circle cx="-6" cy="-50" r="11" fill="#f7d766"/>'
+        + '<circle cx="22" cy="-46" r="10" fill="#e77d5a"/>'
+        + '<circle cx="-36" cy="-44" r="3.5" fill="#fffbe8"/>'
+        + '<circle cx="-6" cy="-50" r="3.5" fill="#fffbe8"/>'
+        + '<circle cx="22" cy="-46" r="3.5" fill="#fffbe8"/>'
+        + '</g>';
+    case 'rock':
+      return '<g class="cover-anim">'
+        + '<path d="M-46 0 Q-44 -30 -20 -40 Q8 -50 30 -34 Q48 -22 44 0 Z" fill="#9aa0a6"/>'
+        + '<path d="M-2 -44 Q8 -30 6 -12" stroke="#7f878e" stroke-width="3" fill="none"/>'
+        + '<circle cx="22" cy="-32" r="6" fill="#b6bcc2"/>'
+        + '</g>';
+    case 'rocks':
+      return '<g class="cover-anim">'
+        + '<ellipse cx="-34" cy="-13" rx="27" ry="17" fill="#8d949b"/>'
+        + '<path d="M-8 0 Q-10 -44 26 -50 Q52 -40 50 0 Z" fill="#a6adb4"/>'
+        + '<path d="M18 -48 Q22 -30 16 -14" stroke="#8d949b" stroke-width="3" fill="none"/>'
+        + '</g>';
+    case 'pond':
+      return '<g class="cover-anim">'
+        + '<path d="M44 -4 Q46 -40 40 -56 M52 -4 Q56 -34 62 -48" stroke="#3e7d33" stroke-width="4" fill="none" stroke-linecap="round"/>'
+        + '<ellipse cy="-7" rx="66" ry="17" fill="#6db3d9"/>'
+        + '<ellipse cx="-14" cy="-9" rx="40" ry="9" fill="#8ecbe8"/>'
+        + '<ellipse cx="39" cy="-59" rx="5" ry="10" fill="#7a4f26"/>'
+        + '<ellipse cx="64" cy="-51" rx="5" ry="9" fill="#7a4f26"/>'
+        + '</g>';
+    case 'log':
+      return '<g class="cover-anim">'
+        + '<rect x="-46" y="-34" width="92" height="31" rx="15" fill="#7a5230"/>'
+        + '<ellipse cx="44" cy="-19" rx="8" ry="15" fill="#8f6238"/>'
+        + '<ellipse cx="44" cy="-19" rx="3" ry="7" fill="#5f4026"/>'
+        + '<ellipse cx="-12" cy="-34" rx="17" ry="6" fill="#5d8f3f"/>'
+        + '</g>';
+    case 'tree':
+      return '<g class="cover-anim">'
+        + '<path d="M-16 0 Q-24 -60 -13 -96 L13 -96 Q24 -60 16 0 Z" fill="#6d4a2c"/>'
+        + '<circle cx="0" cy="-128" r="52" fill="#3f7d33"/>'
+        + '<circle cx="-40" cy="-106" r="34" fill="#4c8d3c"/>'
+        + '<circle cx="40" cy="-106" r="34" fill="#42853a"/>'
+        + '<ellipse cy="-36" rx="13" ry="19" fill="#2c1c10"/>'
+        + '</g>';
+    case 'hollow':
+      return '<g class="cover-anim">'
+        + '<path d="M-16 0 Q-24 -60 -13 -96 L13 -96 Q24 -60 16 0 Z" fill="#5a3d24"/>'
+        + '<circle cx="0" cy="-126" r="50" fill="#2b4a2b"/>'
+        + '<circle cx="-42" cy="-104" r="33" fill="#324f2c"/>'
+        + '<circle cx="42" cy="-104" r="33" fill="#24401f"/>'
+        + '<ellipse cy="-38" rx="14" ry="21" fill="#140d08"/>'
+        + '</g>';
+    case 'cave':
+      return '<g class="cover-anim">'
+        + '<path d="M-62 0 Q-68 -52 -22 -68 Q32 -82 56 -52 Q64 -26 60 0 Z" fill="#555b63"/>'
+        + '<path d="M-34 0 Q-34 -34 0 -38 Q34 -34 34 0 Z" fill="#1d1712"/>'
+        + '</g>';
+  }
+  return '<g class="cover-anim"><circle cy="-20" r="30" fill="#4c8d3c"/></g>';
+}
+function starSVG() {
+  return '<path d="M0 -30 L8 -10 L29 -10 L12 3 L18 24 L0 11 L-18 24 L-12 3 L-29 -10 L-8 -10 Z" fill="#ffd75e" stroke="#b8860b" stroke-width="2"/>';
+}
+
+// ---------------- Szenen-Hintergrund ----------------
+function decoGrass(pal, night) {
+  var s = '', i;
+  for (i = 0; i < 26; i++) {
+    var x = ((i * 137) % 960) + 20;
+    var y = 430 + ((i * 61) % 160);
+    var h = 12 + (i % 3) * 5;
+    s += '<path d="M' + x + ' ' + y + ' q -4 -' + h + ' -8 -' + (h + 4)
+      + ' M' + x + ' ' + y + ' q 4 -' + (h - 2) + ' 8 -' + (h + 2)
+      + '" stroke="' + pal.grass + '" stroke-width="3" fill="none" stroke-linecap="round"/>';
+    if (i % 4 === 1 && !night) {
+      s += '<circle cx="' + (x + 12) + '" cy="' + (y - 6) + '" r="4" fill="#f7d766"/>'
+        + '<circle cx="' + (x + 12) + '" cy="' + (y - 6) + '" r="1.6" fill="#fffbe8"/>';
+    }
+    if (night && i % 5 === 2) {
+      s += '<circle class="twinkle" style="animation-delay:' + ((i % 5) * .5) + 's" cx="' + (x + 14) + '" cy="' + (y - 8) + '" r="3.5" fill="#ffe98a" opacity=".85"/>';
+    }
+  }
+  return s;
+}
+function bgSVG(pal, night) {
+  var s = '<defs>'
+    + '<linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">'
+    + '<stop offset="0" stop-color="' + pal.sky1 + '"/><stop offset="1" stop-color="' + pal.sky2 + '"/>'
+    + '</linearGradient>'
+    + '<linearGradient id="ground" x1="0" y1="0" x2="0" y2="1">'
+    + '<stop offset="0" stop-color="' + pal.ground1 + '"/><stop offset="1" stop-color="' + pal.groundFlat + '"/>'
+    + '</linearGradient>'
+    + '</defs>'
+    + '<rect width="1000" height="' + HORIZON + '" fill="url(#sky)"/>'
+    + '<rect y="' + HORIZON + '" width="1000" height="' + (VBH - HORIZON) + '" fill="url(#ground)"/>';
+  var i, x, y;
+  if (night) {
+    s += '<circle cx="820" cy="90" r="34" fill="#f4f1d8"/>'
+      + '<circle cx="806" cy="82" r="9" fill="#ddd8b8"/>'
+      + '<circle cx="832" cy="102" r="6" fill="#ddd8b8"/>'
+      + '<circle cx="829" cy="74" r="4" fill="#ddd8b8"/>';
+    for (i = 0; i < 22; i++) {
+      x = ((i * 173) % 950) + 25;
+      y = 18 + ((i * 97) % 230);
+      s += '<circle class="twinkle" style="animation-delay:' + ((i % 5) * .5) + 's" cx="' + x + '" cy="' + y + '" r="' + (1.6 + (i % 3) * .7) + '" fill="#fffde8"/>';
+    }
+    for (i = 0; i < 4; i++) {
+      var fx = 160 + i * 210, fy = 440 + (i % 2) * 60;
+      s += '<g class="float" style="animation-delay:' + (i * .9) + 's">'
+        + '<circle cx="' + fx + '" cy="' + fy + '" r="4" fill="#ffe98a" opacity=".9"/>'
+        + '<circle cx="' + fx + '" cy="' + fy + '" r="9" fill="#ffe98a" opacity=".25"/>'
+        + '</g>';
+    }
+  } else {
+    s += '<circle cx="840" cy="88" r="40" fill="#ffe27a"/>'
+      + '<circle cx="840" cy="88" r="52" fill="#ffe27a" opacity=".35"/>'
+      + '<g class="float"><ellipse cx="180" cy="96" rx="60" ry="22" fill="#ffffff" opacity=".92"/>'
+      + '<ellipse cx="230" cy="88" rx="42" ry="18" fill="#ffffff" opacity=".92"/></g>'
+      + '<g class="float" style="animation-delay:1.4s"><ellipse cx="520" cy="64" rx="52" ry="19" fill="#ffffff" opacity=".85"/>'
+      + '<ellipse cx="565" cy="58" rx="34" ry="15" fill="#ffffff" opacity=".85"/></g>';
+  }
+  // Huegel
+  s += '<path d="M0 ' + HORIZON + ' Q240 300 520 ' + HORIZON + ' Z" fill="' + pal.hill + '"/>'
+    + '<path d="M420 ' + HORIZON + ' Q700 310 1000 ' + HORIZON + ' Z" fill="' + pal.hill2 + '"/>';
+  // kleine Herde in der Ferne
+  s += '<g opacity=".85">'
+    + '<g transform="translate(255,368) scale(.45)">' + sheepSVG() + '</g>'
+    + '<g transform="translate(320,352) scale(.38)">' + sheepSVG() + '</g>'
+    + '<g transform="translate(700,360) scale(.4)">' + sheepSVG() + '</g>'
+    + '</g>';
+  return s + decoGrass(pal, night);
+}
+
+// ---------------- Hirte ----------------
+var hirte = null;
+var hirteX = 70, hirteY = 556, hirteTargetX = null, hirteFaceR = true;
+function shepherdSVG(x, y, night) {
+  var lantern = night
+    ? '<circle cx="34" cy="-30" r="18" fill="#ffd75e" opacity=".18"/>'
+      + '<rect x="29" y="-34" width="10" height="13" rx="3" fill="#8a5a2b"/>'
+      + '<rect x="30.5" y="-31" width="7" height="8" rx="2" fill="#ffe98a"/>'
+      + '<path d="M30 -36 L46 -44" stroke="#5f4026" stroke-width="3"/>'
+    : '';
+  return '<g id="hirte" transform="translate(' + x + ',' + y + ')">'
+    + '<g id="hirteInner">'
+    + '<path d="M22 -88 Q36 -80 42 -64 Q48 -46 47 -42 L44 -40 Q36 -48 32 -60" fill="none" stroke="#8a5a2b" stroke-width="5" stroke-linecap="round"/>'
+    + lantern
+    + '<path d="M-16 -78 L16 -78 L26 0 L-26 0 Z" fill="#4d6fae"/>'
+    + '<path d="M-16 -78 L16 -78 L13 -58 L-13 -58 Z" fill="#5d80c2"/>'
+    + '<circle cx="0" cy="-90" r="13" fill="#f0c8a0"/>'
+    + '<path d="M-13 -92 Q-9 -106 0 -106 Q9 -106 13 -92 Q6 -100 0 -99 Q-6 -100 -13 -92 Z" fill="#6b4a2b"/>'
+    + '<circle cx="-4.5" cy="-90" r="1.6" fill="#333333"/>'
+    + '<circle cx="4.5" cy="-90" r="1.6" fill="#333333"/>'
+    + '<path d="M-4 -83 Q0 -80 4 -83" stroke="#a35f4a" stroke-width="2" fill="none" stroke-linecap="round"/>'
+    + '<path d="M-18 -46 Q0 -56 18 -46" stroke="#e8c040" stroke-width="6" fill="none" stroke-linecap="round"/>'
+    + '</g></g>';
+}
+function applyShepherdTransform() {
+  if (!hirte) return;
+  hirte.setAttribute('transform', 'translate(' + hirteX.toFixed(1) + ',' + hirteY + ')'
+    + (hirteFaceR ? '' : ' scale(-1,1)'));
+  var inner = hirte.querySelector('#hirteInner');
+  if (inner) inner.setAttribute('class', hirteTargetX !== null ? 'schritt' : '');
+}
+
+// ---------------- Animations-Schleife ----------------
+function tickHirte() {
+  if (hirteTargetX !== null && hirte && state === 'play') {
+    var d = hirteTargetX - hirteX;
+    if (Math.abs(d) > 3) {
+      hirteX += Math.max(-5.5, Math.min(5.5, d * .07));
+      if (Math.abs(d) > 6) hirteFaceR = d > 0;
+      applyShepherdTransform();
+    } else {
+      hirteTargetX = null;
+      applyShepherdTransform();
+    }
+  }
+  requestAnimationFrame(tickHirte);
+}
+
+// ---------------- Letterbox passend zur Szene ----------------
+function fit() {
+  var w = stage.clientWidth, h = stage.clientHeight;
+  if (!w || !h) return;
+  var pal = LEVELS[level - 1] ? LEVELS[level - 1].pal : PAL_TAG;
+  var a = VBW / VBH, ar = w / h, p = HORIZON / VBH;
+  if (ar > a) {
+    stage.style.background = 'linear-gradient(180deg,'
+      + pal.sky1 + ' 0 0,' + pal.sky2 + ' ' + (p * 100 - 4) + '%,'
+      + pal.ground1 + ' ' + (p * 100) + '%,' + pal.groundFlat + ' 100%)';
+  } else {
+    var scale = Math.min(w / VBW, h / VBH);
+    var t = (1 - (scale * VBH) / h) / 2;
+    stage.style.background = 'linear-gradient(180deg,'
+      + pal.sky1 + ' 0 ' + (t * 100) + '%,'
+      + pal.groundFlat + ' ' + (t * 100) + '% 100%)';
+  }
+}
+window.addEventListener('resize', fit);
+window.addEventListener('orientationchange', fit);
+
+// ---------------- Spielsteuerung ----------------
+function shuffle(a) {
+  var r = a.slice(), i, j, t;
+  for (i = r.length - 1; i > 0; i--) {
+    j = Math.floor(Math.random() * (i + 1));
+    t = r[i]; r[i] = r[j]; r[j] = t;
+  }
+  return r;
+}
+function storeUnlocked(n) {
+  unlocked = Math.min(LEVELS.length, Math.max(1, n));
+  try { if (window.localStorage) localStorage.setItem('wims.unlocked', String(unlocked)); } catch (e) { }
+}
+function startLevelFromStored() {
+  var u = 1;
+  try {
+    var s = window.localStorage ? localStorage.getItem('wims.unlocked') : null;
+    if (s) {
+      var v = parseInt(s, 10);
+      if (v >= 1 && v <= LEVELS.length) u = v;
+    }
+  } catch (e) { }
+  startLevel(u);
+}
+function startLevel(n) {
+  level = n;
+  state = 'play';
+  wrongCount = 0;
+  hintEls = [];
+  hirteX = 70; hirteY = 556; hirteTargetX = null; hirteFaceR = true;
+  hideOverlay();
+  fit();
+  renderScene();
+  var L = LEVELS[level - 1];
+  showBanner('Stufe ' + level + ' von ' + LEVELS.length + ': Wo ist das Schaf?');
+  say(L.name + '. Wo ist das Schaf? Tippe, um nachzuschauen.');
+}
+function renderScene() {
+  var L = LEVELS[level - 1];
+  var night = L.pal === PAL_NACHT;
+  var order = shuffle(L.spots.map(function (_, i) { return i; }));
+  sheepIdx = order[0];
+  var emojis = shuffle(L.pool);
+  spots = L.spots.map(function (sp, i) {
+    var isSheep = (i === sheepIdx);
+    return { x: sp.x, y: sp.y, t: sp.t, emoji: isSheep ? null : emojis[i % emojis.length], isSheep: isSheep, revealed: false };
+  });
+  var s = bgSVG(L.pal, night);
+  spots.forEach(function (sp, i) {
+    s += '<g class="spot" data-i="' + i + '" transform="translate(' + sp.x + ',' + sp.y + ')">'
+      + '<circle class="hit" cy="-34" r="75" fill="rgba(0,0,0,0)"/>'
+      + '<g transform="translate(0,4)"><g id="sheepPop' + (sp.isSheep ? '' : 'x') + '" class="hidden-content">';
+    if (sp.isSheep) {
+      s += sheepSVG();
+    } else {
+      s += '<text y="-8" font-size="62" text-anchor="middle">' + sp.emoji + '</text>';
+    }
+    s += '</g></g>' + coverSVG(sp.t) + '</g>';
+  });
+  s += shepherdSVG(hirteX, hirteY, night);
+  svg.innerHTML = s;
+  hirte = document.getElementById('hirte');
+  applyShepherdTransform();
+  state = 'play';
+}
+
+// ---------------- Zeiger-Eingabe ----------------
+function toUser(evt) {
+  try {
+    var pt = svg.createSVGPoint();
+    pt.x = evt.clientX; pt.y = evt.clientY;
+    var m = svg.getScreenCTM();
+    if (!m) return null;
+    return pt.matrixTransform(m.inverse());
+  } catch (e) { return null; }
+}
+svg.addEventListener('pointerdown', function (e) {
+  if (state !== 'play') return;
+  var g = e.target;
+  while (g && g !== svg && (!g.classList || !g.classList.contains('spot'))) g = g.parentNode;
+  if (g && g !== svg && g.classList && g.classList.contains('spot')) {
+    handleSpot(parseInt(g.getAttribute('data-i'), 10), g);
+    return;
+  }
+  var u = toUser(e);
+  if (u && u.y > 240 && u.y < VBH - 8) {
+    hirteTargetX = Math.max(50, Math.min(930, u.x));
+    hirteFaceR = hirteTargetX > hirteX;
+    applyShepherdTransform();
+  }
+});
+function handleSpot(i, el) {
+  var sp = spots[i];
+  if (!sp || sp.revealed) return;
+  sp.revealed = true;
+  el.classList.add('revealed');
+  el.style.pointerEvents = 'none';
+  hirteTargetX = Math.max(50, Math.min(930, sp.x - 80));
+  hirteFaceR = hirteTargetX > hirteX;
+  applyShepherdTransform();
+  sndPlop();
+  if (sp.isSheep) {
+    foundSheep(el);
+    return;
+  }
+  wrongCount++;
+  sndSoft();
+  setTimeout(sndBleat, 280);
+  var name = LEVELS[level - 1].names[sp.emoji] || 'ein Tier';
+  flashBanner(sp.emoji + ' Kein Schaf \u2013 nur ' + name + '!', 2600);
+  say('Da ist ' + name + '. Das ist kein Schaf!');
+  if (wrongCount >= 3) {
+    var wrap = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    wrap.setAttribute('transform', 'translate(' + spots[sheepIdx].x + ',' + (spots[sheepIdx].y - 92) + ')');
+    wrap.setAttribute('class', 'hint-star');
+    wrap.innerHTML = starSVG();
+    hintEls.push(wrap);
+    svg.appendChild(wrap);
+  }
+}
+function foundSheep(el) {
+  state = 'found';
+  hirteTargetX = null;
+  applyShepherdTransform();
+  sndBleat();
+  setTimeout(sndWin, 350);
+  var pop = el.querySelector('.hidden-content');
+  if (pop) pop.classList.add('wiggle');
+  showBanner('\uD83D\uDC11 M\u00E4h! Hier ist das Schaf!');
+  say('M\u00E4h! Hier ist das Schaf!');
+  setTimeout(function () { showFoundOverlay(); }, 1700);
+}
+
+// ---------------- Overlays ----------------
+function hideOverlay() { overlay.classList.remove('show'); }
+function buildStartHTML() {
+  var saved = 1;
+  try {
+    var s = window.localStorage ? localStorage.getItem('wims.unlocked') : null;
+    if (s) {
+      var v = parseInt(s, 10);
+      if (v >= 1 && v <= LEVELS.length) saved = v;
+    }
+  } catch (e) { }
+  var html = '<a class="zurueck" href="../index.html">\u2190 Spiele</a>'
+    + '<div class="emoji-gross">\uD83D\uDC11</div>'
+    + '<h1>Wo ist mein Schaf?</h1>'
+    + '<p class="vers">Finde das verlorene Schaf \u2013 nach dem Gleichnis von Lukas 15 und Psalm 23.</p>';
+  if (saved > 1) {
+    html += '<button class="btn gruen" id="btnWeiter" style="margin-top:18px">Weiterspielen \u2013 Stufe ' + saved + '</button>'
+      + '<button class="btn klein-btn" id="btnNeu">Von vorne beginnen</button>';
+  } else {
+    html += '<button class="btn gruen" id="btnStart" style="margin-top:18px">Spielen</button>';
+  }
+  html += '<p class="klein">F\u00FCr Kinder von 4\u20136 Jahren \u00B7 kein Zeitdruck \u00B7 nichts kann schiefgehen</p>';
+  return html;
+}
+function showStartOverlay() {
+  state = 'start';
+  level = 1;
+  fit();
+  hideHintEls();
+  svg.innerHTML = bgSVG(PAL_TAG, false)
+    + '<g transform="translate(640,540)">' + sheepSVG() + '</g>'
+    + '<g transform="translate(740,552) scale(.9)">' + sheepSVG() + '</g>'
+    + shepherdSVG(500, 556, false);
+  hirte = document.getElementById('hirte');
+  overlayBox.innerHTML = buildStartHTML();
+  overlay.classList.add('show');
+  showBanner('Wo ist mein Schaf?');
+  var bs = document.getElementById('btnStart');
+  var bw = document.getElementById('btnWeiter');
+  var bn = document.getElementById('btnNeu');
+  if (bs) bs.addEventListener('pointerdown', function () { sndPlop(); startLevel(1); });
+  if (bw) bw.addEventListener('pointerdown', function () { sndPlop(); startLevelFromStored(); });
+  if (bn) bn.addEventListener('pointerdown', function () { sndPlop(); storeUnlocked(1); startLevel(1); });
+}
+function showFoundOverlay() {
+  var L = LEVELS[level - 1];
+  var last = (level >= LEVELS.length);
+  overlayBox.innerHTML = '<div class="emoji-gross">\uD83D\uDC11\uD83C\uDF89</div>'
+    + '<h1>M\u00E4h, da ist es!</h1>'
+    + '<p class="vers">\u201E' + L.vers + '\u201C</p>'
+    + '<p class="klein">Stufe ' + level + ' von ' + LEVELS.length + ' geschafft</p>'
+    + '<button class="btn gruen" id="btnNext" style="margin-top:18px">'
+    + (last ? 'Feiern!' : 'Weitersuchen \u2013 Stufe ' + (level + 1)) + '</button>';
+  overlay.classList.add('show');
+  document.getElementById('btnNext').addEventListener('pointerdown', function () {
+    sndPlop();
+    if (last) { showFinale(); }
+    else { storeUnlocked(level + 1); startLevel(level + 1); }
+  });
+}
+function showFinale() {
+  state = 'finale';
+  sndFinale();
+  say('Freut euch mit mir! Ich habe mein verlorenes Schaf gefunden.');
+  hideHintEls();
+  svg.innerHTML = bgSVG(PAL_TAG, false)
+    + '<g transform="translate(640,540)">' + sheepSVG() + '</g>'
+    + '<g transform="translate(740,552) scale(.9)">' + sheepSVG() + '</g>'
+    + shepherdSVG(430, 556, false);
+  hirte = document.getElementById('hirte');
+  overlayBox.innerHTML = '<div class="emoji-gross">\uD83C\uDF89\uD83D\uDC11\uD83C\uDF89</div>'
+    + '<h1>Alles gefunden!</h1>'
+    + '<p class="vers">\u201EFreut euch mit mir: Ich habe mein verlorenes Schaf gefunden!\u201C (Lukas 15,6)</p>'
+    + '<h2>Der HERR ist mein Hirte (Psalm 23)</h2>'
+    + '<div class="psalm">\u201EDer HERR ist mein Hirte \u2013 mir fehlt nichts.<br>'
+    + 'Auf gr\u00FCnen Wiesen l\u00E4sst er mich lagern,<br>'
+    + 'zu stillen Wasser f\u00FChrt er mich.<br>'
+    + 'Auch wenn ich durch ein dunkles Tal gehe \u2013<br>'
+    + 'du bist bei mir und machst mir Mut.<br>'
+    + 'G\u00FCte und Liebe begleiten mich jeden Tag.\u201C<br>'
+    + '<span class="klein">(Psalm 23 \u2013 f\u00FCr Kinder nacherz\u00E4hlt)</span></div>'
+    + '<button class="btn" id="btnAgain" style="margin-top:18px">Nochmal spielen</button>'
+    + '<a class="btn klein-btn" style="text-decoration:none" href="../index.html">\u2190 Spiele</a>';
+  overlay.classList.add('show');
+  showBanner('Alle Schafe sind wieder bei der Herde!');
+  document.getElementById('btnAgain').addEventListener('pointerdown', function () {
+    sndPlop();
+    storeUnlocked(1);
+    startLevel(1);
+  });
+}
+function hideHintEls() {
+  hintEls.forEach(function (el) {
+    if (el && el.parentNode) el.parentNode.removeChild(el);
+  });
+  hintEls = [];
+}
+
+// ---------------- Init ----------------
+fit();
+showStartOverlay();
+requestAnimationFrame(tickHirte);
+</script>
+</body>
+</html>
