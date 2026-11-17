@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <rect x="0" y="0" width="1024" height="1024" fill="#8ecae6"/>
+  <!-- Sonne -->
+  <circle cx="790" cy="225" r="90" fill="#ffd166"/>
+  <circle cx="790" cy="225" r="66" fill="#ffe29a"/>
+  <!-- Wolken -->
+  <g fill="#ffffff" opacity="0.95">
+    <ellipse cx="175" cy="205" rx="115" ry="58"/>
+    <ellipse cx="285" cy="240" rx="95" ry="50"/>
+    <ellipse cx="115" cy="255" rx="80" ry="45"/>
+    <ellipse cx="700" cy="430" rx="100" ry="50"/>
+    <ellipse cx="805" cy="465" rx="85" ry="45"/>
+  </g>
+  <!-- Wiese -->
+  <ellipse cx="512" cy="920" rx="470" ry="140" fill="#95d5b2"/>
+  <ellipse cx="512" cy="965" rx="430" ry="110" fill="#74c69d"/>
+  <!-- Kreuz -->
+  <g transform="translate(522,512)">
+    <rect x="-56" y="-268" width="120" height="500" rx="58" fill="#a44a3f" transform="translate(12,16)"/>
+    <rect x="-196" y="-128" width="392" height="124" rx="58" fill="#a44a3f" transform="translate(12,16)"/>
+    <rect x="-56" y="-268" width="120" height="500" rx="58" fill="#e76f51"/>
+    <rect x="-196" y="-128" width="392" height="124" rx="58" fill="#e76f51"/>
+    <rect x="-22" y="-240" width="26" height="440" rx="13" fill="#f4a261"/>
+  </g>
+  <!-- Schäfchen -->
+  <g transform="translate(285,760)">
+    <ellipse cx="0" cy="0" rx="100" ry="72" fill="#ffffff"/>
+    <circle cx="-62" cy="-38" r="32" fill="#ffffff"/>
+    <circle cx="-12" cy="-54" r="34" fill="#ffffff"/>
+    <circle cx="-36" cy="-64" r="30" fill="#ffffff"/>
+    <circle cx="90" cy="-22" r="40" fill="#4a4e69"/>
+    <circle cx="104" cy="-34" r="6" fill="#ffffff"/>
+    <circle cx="80" cy="-34" r="6" fill="#ffffff"/>
+    <rect x="-58" y="58" width="16" height="38" rx="8" fill="#4a4e69"/>
+    <rect x="5" y="60" width="16" height="36" rx="8" fill="#4a4e69"/>
+    <rect x="58" y="62" width="14" height="28" rx="7" fill="#4a4e69"/>
+  </g>
+</svg>

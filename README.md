@@ -32,11 +32,20 @@ Der Klassiker mit Swipe-Steuerung: Füttere die Schlange und werde länger – o
 - **Kinderleichte Steuerung**: Alles per Fingertipp bzw. Wischen, große Knöpfe, keine Werbung zwischen den Levels.
 - **Ohne Internet-Berechtigung:** Wer sicher sein will, dass die App nie ins Netz kann, entfernt im Workflow-Schritt „App anpassen" die Zeile `android.permission.INTERNET` aus der AndroidManifest.xml (per `sed -i '/permission.INTERNET/d'`). Danach bitte kurz testen, ob alles noch startet.
 
-## APK holen (für Eltern ohne Entwickler-Umgebung)
+## APK holen – per Obtainium (empfohlen, mit automatischen Updates)
 
-1. Im Repository oben auf **Actions** klicken. Der Lauf „APK bauen" startet automatisch bei jedem Push (ca. 5-8 Minuten).
-2. Wenn er grün ist: Lauf öffnen, unten bei **Artifacts** `spiele-apk` herunterladen und entpacken.
-3. `app-debug.apk` aufs Tablet kopieren, antippen und installieren.
+[Obtainium](https://github.com/ImranR98/Obtainium) installiert die App direkt aus diesem Repository und meldet automatisch neue Versionen:
+
+1. Obtainium installieren (APK von [github.com/ImranR98/Obtainium](https://github.com/ImranR98/Obtainium/releases) oder per F-Droid).
+2. In Obtainium auf **Android-App hinzufügen** → als App-URL eingeben: `https://github.com/jensborrack/Games` → zwei Mal weiter tippen (Standardeinstellungen funktionieren).
+3. **Installieren** tippen – fertig. Bei jedem neuen Release erscheint in Obtainium ein Update-Hinweis; Updates installieren sich mit einem Tipp.
+
+Hinweis: Wurde die App vorher manuell aus einem Actions-Artifact installiert, einmal deinstallieren (alte Builds hatten eine andere Signatur, sonst schlägt das Update fehl). Danach per Obtainium installieren – ab dann bleiben alle Updates erhalten.
+
+## APK holen – manuell (ohne Obtainium)
+
+1. Im Repository oben auf **Releases** klicken. Der Lauf „APK bauen" startet automatisch bei jedem Push (ca. 5-8 Minuten) und veröffentlicht das Ergebnis als Release mit der APK im Anhang (Datei `Spiele-App-v1.0...apk`).
+2. APK herunterladen, aufs Tablet kopieren, antippen und installieren.
    (Android fragt einmal nach „Installation aus unbekannten Quellen".)
 
 Die App heißt auf dem Startbildschirm **Spiele** und zeigt das Auswahl-Menü. Von jedem Spiel kommt man über den Pfeil-oben-„← Spiele"-Button zurück ins Menü.
@@ -45,7 +54,7 @@ Die App heißt auf dem Startbildschirm **Spiele** und zeigt das Auswahl-Menü. V
 
 Voraussetzungen: Node 20+, Java 17 (Temurin), Android SDK (oder Android Studio installiert). Die APK-Dateien (`.github/`, `.gitignore`) müssen im Repository-Root liegen.
 
-1. Auf github.com ein Konto anlegen und ein neues **privates** Repository erstellen (z. B. `spiele-app`), ohne README. Den **Inhalt dieses Ordners** (`spiele-app/` samt dem versteckten `.github`-Ordner) ins Repository-Root legen, nicht den übergeordneten Ordner.
+1. Auf github.com ein Konto anlegen und ein neues **öffentliches** Repository erstellen (z. B. `spiele-app`), ohne README. Öffentlich ist Pflicht, damit Eltern die APK ohne GitHub-Konto per Obtainium installieren können. Den **Inhalt dieses Ordners** (`spiele-app/` samt dem versteckten `.github`-Ordner) ins Repository-Root legen, nicht den übergeordneten Ordner.
 2. Diesen Ordner in VSCodium öffnen (Datei → Ordner öffnen).
 3. Im VSCodium-Terminal:
    ```
@@ -86,7 +95,7 @@ Der GitHub-Workflow (`.github/workflows/build-apk.yml`) erzwingt zusätzlich Que
 ## Hinweise und Ideen für die Zukunft
 
 - **App-Name / Paket-ID:** In `capacitor.config.json` (`appName`, `appId`) und `package.json` einstellen.
-- **App-Icon:** Standard-Icon von Capacitor. Ein eigenes Icon lässt sich später ergänzen (Ordner `android/app/src/main/res/mipmaps-*`).
+- **App-Icon:** Eigenes Icon (Kreuz mit Schäfchen auf Himmelblau). Die Vorlagen liegen als SVG in `assets-icon/` (`icon-square.svg` für das Launcher-Icon, `icon-foreground.svg` für das adaptive Icon). Nach Änderungen am PNG-Bestand neu erzeugen: `LD_LIBRARY_PATH= assets-icon/generate.sh` (benötigt ImageMagick; schreibt die PNGs nach `assets-icon/android/` und spiegelt sie ins lokale `android/app/src/main/res/`, falls vorhanden). Da der GitHub-Build das Android-Projekt jedes Mal neu erzeugt, kopiert der Workflow-Schritt „Eigenes App-Icon einsetzen“ die committeden PNGs aus `assets-icon/android/` hinein.
 - **Fehler im Lauf?** Den roten Schritt aufklappen und die Fehlermeldung anschauen.
 
 Ideen für weitere biblische Spiele (PRs willkommen!): Noa arche, Jona im Wal, Mose und das Rote Meer, Daniel in der Löwengrube.

@@ -8,6 +8,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -28,6 +30,24 @@ jobs:
           npx cap add android
           npx cap sync android
 
+      - name: Eigenes App-Icon einsetzen
+        run: cp -r assets-icon/android/. android/app/src/main/res/
+
+      - name: Feste Signatur einsetzen (damit Obtainium-Updates installierbar sind)
+        run: |
+          cp signing/debug.keystore android/app/debug.keystore
+          python3 - <<'EOF'
+          p = 'android/app/build.gradle'
+          s = open(p).read()
+          assert 'signingConfigs' not in s, 'signingConfigs existiert schon'
+          block = '    signingConfigs {\n        debug {\n            storeFile file(\'debug.keystore\')\n            storePassword \'android\'\n            keyAlias \'androiddebugkey\'\n            keyPassword \'android\'\n        }\n    }\n'
+          injected = '    buildTypes {\n        debug {\n            signingConfig signingConfigs.debug\n        }\n'
+          assert s.count('    buildTypes {') == 1
+          s = s.replace('    buildTypes {', block + injected, 1)
+          open(p, 'w').write(s)
+          EOF
+          grep -n "signingConfig" android/app/build.gradle
+
       - name: App anpassen (Querformat + Vollbild)
         run: |
           sed -i 's|android:launchMode="singleTask"|android:launchMode="singleTask"\n            android:screenOrientation="sensorLandscape"|' android/app/src/main/AndroidManifest.xml
@@ -40,6 +60,20 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew assembleDebug
+
+      - name: APK mit Versionsnummer benennen
+        run: |
+          cp android/app/build/outputs/apk/debug/app-debug.apk "Spiele-App-v1.0.${{ github.run_number }}.apk"
+          ls -lh Spiele-App-*.apk
+
+      - name: Als GitHub Release veröffentlichen (für Obtainium)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: Spiele v1.0.${{ github.run_number }}
+          files: Spiele-App-*.apk
+          fail_on_unmatched_files: true
+          make_latest: true
 
       - uses: actions/upload-artifact@v4
         with:
