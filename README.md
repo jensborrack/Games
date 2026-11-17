@@ -17,6 +17,18 @@ Ein Abenteuer in 4 Levels über den Hirtenjungen David und seinen Weg zu Gott �
 
 In allen Levels gibt es Quizfragen zur Geschichte und einen Gebets-Bonus (+1 Mut). So lernen die Kinder die biblische Geschichte spielerisch kennen.
 
+### 👑 Davids Aufstieg
+
+Ein 5-Level-Abenteuer über den jungen David vor seinem Kampf gegen Goliat:
+
+1. **Stöcke sammeln** – Tippe, wohin David laufen soll, und sammle 6 Stöcke.
+2. **Die Zwille bauen** – Tippe ganz schnell und baue David seine Schleuder.
+3. **Zielschießen** – Ziehen, zielen, loslassen: Triff 6 schwebende Äpfel.
+4. **Die Wölfe** – Beschütze die Schafe und verscheuche in 3 Wellen alle Wölfe.
+5. **Goliat** – Triff seine Stirn, weiche der Lanze aus und bringe ihn zu Fall.
+
+Jedes Level endet mit einem Bibelvers, am Ende steht 1. Samuel 17,45. Zwei Schwierigkeitsstufen (Leicht 4–6 Jahre, Normal 7–12 Jahre).
+
 ### 🐑 Wo ist mein Schaf?
 
 Ein Suchspiel für die Kleinsten (4-6 Jahre) nach dem Gleichnis vom verlorenen Schaf (Lukas 15) und Psalm 23: Der Hirte sucht sein Schäfchen hinter Büschen, Heuballen, Felsen und im dunklen Tal – 4 Suchbilder mit steigender Zahl an Verstecken, ohne Zeitdruck und ohne Verlieren. Jedes gefundene Schaf bringt einen Vers aus Psalm 23, am Ende feiern alle mit Lukas 15,6. Mit deutscher Sprachausgabe (falls verfügbar), freundlichen Tönen, Lautsprecher-Button zum Stummschalten und gemerkter höchster Stufe.
@@ -71,6 +83,7 @@ Voraussetzungen: Node 20+, Java 17 (Temurin), Android SDK (oder Android Studio i
 
 - Menü: `www/index.html`
 - Davids Weg: `www/davids-weg.html`
+- Davids Aufstieg: `www/davids-aufstieg.html`
 - Wo ist mein Schaf? `www/wo-ist-mein-schaf/index.html`
 - Snake: `www/snake.html`
 
