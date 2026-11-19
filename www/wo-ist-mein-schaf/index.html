@@ -45,6 +45,18 @@ html, body {
 #muteBtn:active { transform: scale(.93); }
 #muteBtn svg { width: 32px; height: 32px; }
 
+/* ------- Abbruch-Button ------- */
+#homeBtn {
+  position: absolute; top: calc(8px + env(safe-area-inset-top)); left: 8px;
+  width: 56px; height: 56px; border-radius: 16px;
+  border: 2px solid rgba(255,255,255,.35);
+  background: rgba(23,22,46,.78); color: #fff7e0;
+  cursor: pointer; z-index: 30;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0; font-family: inherit; font-size: 30px; line-height: 1;
+}
+#homeBtn:active { transform: scale(.93); }
+
 /* ------- Overlays ------- */
 #overlay {
   position: absolute; inset: 0; z-index: 20;
@@ -145,6 +157,7 @@ html, body {
   <button id="muteBtn" aria-label="Ton an oder aus">
     <svg id="muteIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></svg>
   </button>
+  <button id="homeBtn" aria-label="Zur\u00FCck zur Spiele-Auswahl">🏠</button>
   <div id="overlay"><div class="karte-box" id="overlayBox"></div></div>
 </div>
 
@@ -162,6 +175,7 @@ var overlay = document.getElementById('overlay');
 var overlayBox = document.getElementById('overlayBox');
 var muteBtn = document.getElementById('muteBtn');
 var muteIcon = document.getElementById('muteIcon');
+var homeBtn = document.getElementById('homeBtn');
 
 // ---------------- Paletten ----------------
 var PAL_TAG = {
@@ -343,6 +357,28 @@ muteBtn.addEventListener('pointerdown', function (e) {
   if (!muted) { ensureAudio(); sndPlop(); }
 });
 drawMuteIcon();
+
+// ---------------- Abbruch-Button (zur Spiele-Auswahl) ----------------
+function showQuitConfirm() {
+  state = 'pause';                                  // Spiel logisch anhalten
+  overlayBox.innerHTML = '<div class="emoji-gross">\uD83C\uDFE0</div>'
+    + '<h1>Und weiter suchen?</h1>'
+    + '<p class="vers">M\u00F6chtest du abbrechen und zur\u00FCck zur Spiele-Auswahl? '
+    + 'Wer weitersucht, macht genau dort weiter.</p>'
+    + '<button class="btn gruen" id="btnQuitStay" style="margin-top:18px">Weiter suchen</button>'
+    + '<a class="btn" style="text-decoration:none" href="../index.html">Ja, zur\u00FCck zur Auswahl</a>';
+  overlay.classList.add('show');
+  document.getElementById('btnQuitStay').addEventListener('pointerdown', function () {
+    sndPlop();
+    hideOverlay();
+    state = 'play';
+  });
+}
+homeBtn.addEventListener('pointerdown', function (e) {
+  e.stopPropagation();
+  if (state === 'play') showQuitConfirm();
+  else location.href = '../index.html';   // Start-/Abschlussbildschirm: direkter Link hilft
+});
 
 // Erster Tipp: Audio freigeben (Autoplay-Regeln)
 document.addEventListener('pointerdown', function () { ensureAudio(); }, true);

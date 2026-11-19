@@ -13,18 +13,38 @@
   #punkte { font-size:1.3rem; font-weight:bold; }
   #topbar { width:100%; max-width:800px; display:flex; align-items:center; justify-content:space-between; gap:10px; }
   #zurueck { color:var(--text); opacity:.8; text-decoration:none; font-size:1rem; font-weight:bold;
-    padding:6px 14px; border-radius:10px; background:rgba(0,0,0,.25); }
+    padding:6px 14px; border-radius:10px; background:rgba(0,0,0,.25); border:none; font-family:inherit; cursor:pointer; }
   canvas { width:min(94vw, 62vh); height:auto; border-radius:14px; }
   #hilfe { font-size:.9rem; opacity:.7; text-align:center; padding:0 12px; }
+  #quit { position:fixed; inset:0; z-index:20; display:flex; align-items:center; justify-content:center;
+    background:rgba(12,14,30,.62); }
+  #quit[hidden] { display:none; }
+  .quit-box { background:#fffbe8; color:#3a2410; border-radius:22px; padding:28px 32px; text-align:center;
+    box-shadow:0 14px 40px rgba(0,0,0,.45); max-width:360px; }
+  .quit-box h2 { margin:0 0 6px; }
+  .quit-box p { margin:0 0 16px; opacity:.8; }
+  .quit-box button { display:block; width:100%; margin:10px 0 0; padding:14px 18px;
+    font-family:inherit; font-weight:bold; font-size:1.1rem; border:none; border-radius:14px; cursor:pointer; }
+  #quitJa { background:#e8a33d; box-shadow:0 4px 0 #b57f27; }
+  #quitNein { background:#7ac36a; box-shadow:0 4px 0 #4f9440; }
+  .quit-box button:active { transform:translateY(2px); }
 </style>
 </head>
 <body>
   <div id="topbar">
-  <a id="zurueck" href="index.html">&#8592; Spiele</a>
+  <button id="zurueck" type="button">&#127968; Spiele</button>
   <div id="punkte">Punkte: 0 &nbsp; Rekord: 0</div>
 </div>
   <canvas id="c"></canvas>
   <div id="hilfe">Wischen oder Pfeiltasten / WASD. Tippen oder Leertaste startet.</div>
+  <div id="quit" hidden>
+    <div class="quit-box">
+      <h2>Spiel abbrechen?</h2>
+      <p>Dann geht es zurück zur Spiele-Auswahl und deine Punkte gehen verloren.</p>
+      <button id="quitJa" type="button">Ja, zur Spiele-Auswahl</button>
+      <button id="quitNein" type="button">Weiter spielen</button>
+    </div>
+  </div>
 
 <script>
 // ===== Hier kann man herumspielen! =====
@@ -134,7 +154,7 @@ document.addEventListener("keydown", e => {
   else if (k === "arrowdown" || k === "s") richtungSetzen(0, 1);
   else if (k === "arrowleft" || k === "a") richtungSetzen(-1, 0);
   else if (k === "arrowright" || k === "d") richtungSetzen(1, 0);
-  else if ((k === " " || k === "enter") && zustand !== "lauf") neuesSpiel();
+  else if ((k === " " || k === "enter") && (zustand === "start" || zustand === "ende")) neuesSpiel();
   if (k.startsWith("arrow") || k === " ") e.preventDefault();
 });
 
@@ -143,11 +163,23 @@ let tx, ty;
 document.addEventListener("touchstart", e => { tx = e.touches[0].clientX; ty = e.touches[0].clientY; });
 document.addEventListener("touchend", e => {
   const dx = e.changedTouches[0].clientX - tx, dy = e.changedTouches[0].clientY - ty;
-  if (Math.abs(dx) < 20 && Math.abs(dy) < 20) { if (zustand !== "lauf") neuesSpiel(); return; }
+  if (Math.abs(dx) < 20 && Math.abs(dy) < 20) { if (zustand === "start" || zustand === "ende") neuesSpiel(); return; }
   if (Math.abs(dx) > Math.abs(dy)) richtungSetzen(dx > 0 ? 1 : -1, 0);
   else richtungSetzen(0, dy > 0 ? 1 : -1);
 });
-canvas.addEventListener("click", () => { if (zustand !== "lauf") neuesSpiel(); });
+canvas.addEventListener("click", () => { if (zustand === "start" || zustand === "ende") neuesSpiel(); });
+
+// Abbruch-Dialog: zurück zur Spiele-Auswahl, erst mit Bestätigung
+const quitDlg = document.getElementById("quit");
+document.getElementById("zurueck").addEventListener("click", () => {
+  if (zustand === "lauf") { zustand = "pause"; quitDlg.hidden = false; }
+  else location.href = "index.html";
+});
+document.getElementById("quitJa").addEventListener("click", () => { location.href = "index.html"; });
+document.getElementById("quitNein").addEventListener("click", () => {
+  quitDlg.hidden = true;
+  if (zustand === "pause") { zustand = "lauf"; schritt(); }
+});
 
 zeichne();
 </script>
